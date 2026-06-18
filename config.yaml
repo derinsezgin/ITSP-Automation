@@ -1,0 +1,130 @@
+# ============================================================================
+# ITSP-Automation yapılandırması (ServiceNow)
+# ----------------------------------------------------------------------------
+# Tüm DOM seçicileri bilinçli olarak burada tutulur; kendi instance'ınıza
+# (Classic UI vs Next Experience/Workspace) göre düzenleyin.
+# Varsayılanlar ServiceNow Classic UI (gsft_main iframe) içindir.
+# ============================================================================
+
+# Temel adresler ------------------------------------------------------------
+# base_url, .env içindeki ITSP_BASE_URL ile ezilebilir.
+base_url: "https://your-instance.service-now.com"
+# Login sonrası açılacak dashboard (boşsa base_url kullanılır).
+dashboard_url: "https://your-instance.service-now.com/now/nav/ui/home"
+# Incident liste sayfası. Classic örnek: incident_list.do?sysparm_query=active=true
+incident_list_url: "https://your-instance.service-now.com/incident_list.do?sysparm_query=active=true"
+
+# Saat dilimi (iş günü hesabı için).
+timezone: "Europe/Istanbul"
+
+# Auth / login ekranı tespiti ----------------------------------------------
+auth:
+  # Aşağıdaki desenlerden biri URL'de geçerse login ekranı sayılır (substring/glob).
+  url_patterns:
+    - "*/login.do*"
+    - "*login.microsoftonline.com*"
+    - "*/oauth_redirect*"
+    - "*/sso*"
+  # Bu seçicilerden biri görünürse login ekranı sayılır.
+  dom_selectors:
+    - "input[type=password]"
+    - "#username"
+    - "#user_name"
+
+# Dashboard hazır göstergesi (login tamamlandı sayılması için aranan eleman).
+dashboard:
+  ready_selector: "body"        # kendi instance'ınıza göre daha spesifik yapın
+
+# DOM seçicileri ------------------------------------------------------------
+selectors:
+  # Liste/form içeriğinin bulunduğu iframe (Classic UI). Next Experience'ta boş bırakın.
+  iframe: "iframe#gsft_main"
+  # Incident liste satırları (her bir incident bir satır).
+  row: "table.list_table tbody tr.list_row"
+  # Liste satırı içindeki hücre seçicileri (satıra göre göreli).
+  number: "td[name='number'] a, a.linked"
+  status: "td[name='incident_state'], td[name='state']"
+  priority: "td[name='priority']"
+  assignment_group: "td[name='assignment_group']"
+
+  # Kayıt detayında Activity stream (en yeni girdi en üstte varsayılır).
+  activity_entry: ".sn-widget-list-content .h-card, .activities-form .sn-activity-entry"
+  activity_date: ".date_time, time"
+  activity_author: ".author, .sn-card-component_accent-bar + * .h-card_name"
+  # Yorum türü ayrımı için (work note vs additional comments) ipucu seçicisi/etiketi.
+  activity_type: ".sn-activity-entry-type"
+
+  # remind modunda kullanılan yorum alanı + SADECE yorumu gönderen buton.
+  # DİKKAT: Tam form "Save/Submit" DEĞİL — yalnızca Activity "Post" butonu.
+  comment_input: "textarea#activity-stream-comments-textarea, textarea[data-stream-text-input]"
+  comment_post_button: "button.activity-submit, button[data-stream-text-submit]"
+
+# Bizim taraf (internal) tespiti -------------------------------------------
+# Son yorum yazarı bu kullanıcılardan biri ya da bu gruplardan birine aitse
+# "bizim taraf" (assignment member / IT owner) sayılır.
+internal_users: []
+# Örn: ["Derin Sezgin", "Jane Doe"]
+internal_groups: []
+# Örn: ["IT Support", "Network Team"]
+
+# Hatırlatıcı (reminder) kuralları -----------------------------------------
+reminder:
+  # Sadece bu statülerdeki incident'lar değerlendirilir (boş = hepsi).
+  target_statuses:
+    - "Waiting for feedback from requester"
+    - "Resolved"
+  first_after_workdays: 2          # 1. hatırlatma: son yorumdan kaç iş günü sonra
+  second_after_workdays: 2         # 2. hatırlatma: 1. hatırlatmadan kaç iş günü sonra
+  require_initial_response: false  # true ise 3 iş günü içinde ilk yanıt yoksa manuel inceleme
+  max_per_run: 25                  # tek koşuda azami gönderim (güvenlik)
+  # İdempotensi imzası: gönderilen her hatırlatma metnine eklenir ve Activity'de
+  # bu metin aranarak çift gönderim engellenir. Müşteriye görünür; kısa tutun.
+  signature_marker: "[Auto-Reminder]"
+
+  # 1. hatırlatma metni (kullanıcı tarafından doldurulacak).
+  reminder_1_text: |
+    Dear customer,
+
+    This is a friendly reminder regarding your incident. Could you please
+    confirm whether the issue has been resolved? We are awaiting your feedback.
+
+    Best regards,
+    IT Support
+
+  # 2. hatırlatma metni — ZORUNLU kapanış uyarısı cümlesini içermelidir.
+  reminder_2_text: |
+    Dear customer,
+
+    This is a second reminder regarding your incident. Please be informed that
+    the INC will be closed if we do not receive feedback from your side within
+    two working days.
+
+    Best regards,
+    IT Support
+
+# İş günü / tatil ayarları --------------------------------------------------
+workdays:
+  # Hafta sonu (Cmt/Pazar) otomatik hariç tutulur. Resmi tatilleri buraya ekleyin.
+  holidays: []
+  # Örn: ["2026-01-01", "2026-04-23"]
+
+# Pagination / limitler -----------------------------------------------------
+pagination:
+  next_selector: "button.list_nav_next, a[title='Next page']"   # boş = tek sayfa
+limits:
+  max_incidents: 200
+
+# Zaman aşımları (ms) -------------------------------------------------------
+timeouts:
+  navigation: 30000
+  selector: 15000
+  manual_login: 300000    # login modunda manuel login için bekleme (5 dk)
+
+# Salt-okunur ağ koruması ---------------------------------------------------
+readonly_guard:
+  enabled: true
+  # remind modunda bloklanacak (state değiştiren) endpoint desenleri.
+  # Yorum POST'una izin verilir; aşağıdakiler her zaman engellenir.
+  blocked_endpoints:
+    - "*sysparm_action=update*"
+    - "*/api/now/table/incident*"   # REST üzerinden kayıt güncelleme

@@ -1,0 +1,21 @@
+# Persistent browser profile (oturum/cookies burada tutulur — ASLA commit etme)
+browser_profile/
+
+# Hata/auth ekran görüntüleri
+screenshots/
+
+# Çıktılar / loglar / durum dosyaları
+*.xlsx
+*.log
+reminders_log.csv
+reminder_state.json
+
+# Ortam değişkenleri (parola yok ama yine de ignore)
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
