@@ -156,7 +156,7 @@ def _process_reminders(page, conf, incidents, state, max_per_run, dry_run) -> in
             logger.info("%s: imza zaten var, atlanıyor.", inc.number)
             continue
 
-        text = reminder.reminder_text(stage, conf)
+        text = reminder.reminder_text(stage, conf, inc)
         if dry_run:
             inc.action = f"[DRY-RUN] {label} gönderilecekti"
             logger.info("%s: [DRY-RUN] %s gönderilecekti.", inc.number, label)

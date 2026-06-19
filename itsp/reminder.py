@@ -129,10 +129,28 @@ def decide_stage(
     return 0, f"Atlandı (1. hatırlatmadan {wd} iş günü; {second_after} bekleniyor)"
 
 
-def reminder_text(stage: int, conf: cfg.Config) -> str:
-    """İlgili kademe metni + idempotensi imzası."""
+def reminder_text(stage: int, conf: cfg.Config, inc: Optional[Incident] = None) -> str:
+    """İlgili kademe metni + idempotensi imzası.
+
+    Metindeki yer tutucular incident bilgisiyle doldurulur:
+      {number}            -> incident numarası (ör. INC0010001)
+      {assignment_group}  -> atanan grup
+      {priority}          -> öncelik
+      {status}            -> statü
+    """
     key = "reminder.reminder_1_text" if stage == 1 else "reminder.reminder_2_text"
     body = (conf.get(key) or "").rstrip()
+
+    if inc is not None:
+        replacements = {
+            "{number}": inc.number or "",
+            "{assignment_group}": inc.assignment_group or "",
+            "{priority}": inc.priority or "",
+            "{status}": inc.status or "",
+        }
+        for placeholder, value in replacements.items():
+            body = body.replace(placeholder, value)
+
     marker = (conf.get("reminder.signature_marker") or "").strip()
     if marker and marker not in body:
         body = f"{body}\n\n{marker}"

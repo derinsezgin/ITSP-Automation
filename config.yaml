@@ -82,14 +82,15 @@ reminder:
   signature_marker: "[Auto-Reminder]"
 
   # 1. hatırlatma metni (Gün 2 — çözümün doğrulanması için takip).
+  # Yer tutucular: {number} {assignment_group} {priority} {status}
   reminder_1_text: |
     Dear Customer,
 
-    We recently informed you that your incident has been resolved.
+    We recently informed you that your incident {number} has been resolved.
 
     We would kindly like to confirm whether the provided solution has fully
     resolved your issue. Could you please review it and let us know if we may
-    consider this incident as resolved?
+    consider incident {number} as resolved?
 
     If the issue still persists, simply reply to this notification and we will
     continue assisting you.
@@ -100,11 +101,13 @@ reminder:
     IT Support
 
   # 2. hatırlatma metni (Gün 4 — ZORUNLU kapanış uyarısı cümlesini içerir).
+  # Yer tutucular: {number} {assignment_group} {priority} {status}
   reminder_2_text: |
     Dear Customer,
 
-    This is a second reminder regarding your recently resolved incident. We have
-    not yet received your feedback confirming whether the issue has been resolved.
+    This is a second reminder regarding your recently resolved incident {number}.
+    We have not yet received your feedback confirming whether the issue has been
+    resolved.
 
     Please be informed that the INC will be closed if we do not receive feedback
     from your side within two working days.
