@@ -4,6 +4,9 @@ browser_profile/
 # Hata/auth ekran görüntüleri
 screenshots/
 
+# Seçici çıkarımı için dökülen HTML/ekran görüntüleri (gerçek veri içerebilir)
+debug/
+
 # Çıktılar / loglar / durum dosyaları
 *.xlsx
 *.log

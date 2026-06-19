@@ -171,6 +171,88 @@ def _process_reminders(page, conf, incidents, state, max_per_run, dry_run) -> in
     return sent_count
 
 
+def cmd_dump(conf: cfg.Config) -> int:
+    """Selektör çıkarımı için: liste ve ilk incident kaydının HTML'ini dosyaya döker.
+
+    Kalıcı (giriş yapılmış) profil ile çalışır; iframe (gsft_main) içeriğini de
+    ayrı dosyaya yazar. Çıkan dosyalar `debug/` altında oluşur; bunları
+    paylaşarak seçicilerin senin arayüzüne göre netleştirilmesini sağlayabilirsin.
+    """
+    debug_dir = cfg.ROOT / "debug"
+    debug_dir.mkdir(parents=True, exist_ok=True)
+
+    with browser.persistent_context(conf) as context:
+        page = context.pages[0] if context.pages else context.new_page()
+        auth.open_dashboard(page, conf)
+        try:
+            auth.ensure_authenticated(page, conf)
+        except auth.ManualLoginRequired as exc:
+            logger.error(str(exc))
+            _save_screenshot(page, "auth_required")
+            print("\n>>> MANUEL LOGIN GEREKİYOR. Önce `python run.py login` çalıştırın.\n")
+            return 2
+
+        # 1) Incident liste sayfası
+        list_url = conf.require("incident_list_url")
+        logger.info("Liste sayfası dökülüyor: %s", list_url)
+        page.goto(list_url, wait_until="domcontentloaded")
+        page.wait_for_timeout(2500)
+        _dump_html(page, conf, debug_dir, "list")
+        page.screenshot(path=str(debug_dir / "list.png"), full_page=True)
+
+        # 2) İlk incident kaydı (varsa) — tek bir örnek yeterli
+        try:
+            root = scraper._content_root(page, conf)
+            row_sel = conf.get("selectors.row")
+            num_sel = conf.get("selectors.number")
+            number = ""
+            if row_sel and num_sel:
+                first = root.locator(row_sel).first
+                if first.count() > 0:
+                    number = (first.locator(num_sel).first.inner_text(timeout=3000) or "").strip()
+            if number:
+                base = conf.require("base_url").rstrip("/")
+                rec_url = f"{base}/incident.do?sysparm_query=number={number}"
+                logger.info("Örnek kayıt dökülüyor: %s", rec_url)
+                page.goto(rec_url, wait_until="domcontentloaded")
+                page.wait_for_timeout(2500)
+                _dump_html(page, conf, debug_dir, "record")
+                page.screenshot(path=str(debug_dir / "record.png"), full_page=True)
+            else:
+                logger.warning(
+                    "Liste satırı/numarası okunamadı; mevcut seçicilerle kayıt açılamadı. "
+                    "Yine de debug/list_inner.html'i paylaşmanız seçicileri çıkarmaya yeter."
+                )
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("Örnek kayıt dökülemedi: %s", exc)
+
+    print(
+        "\n>>> HTML dökümleri 'debug/' klasörüne yazıldı:\n"
+        "    - debug/list_inner.html  (iframe içeriği — asıl liste burada)\n"
+        "    - debug/list_outer.html  (dış sayfa)\n"
+        "    - debug/record_inner.html / record_outer.html (varsa)\n"
+        "    - debug/*.png ekran görüntüleri\n"
+        ">>> Bu dosyaları paylaşırsan seçicileri arayüzüne göre netleştiririm.\n"
+        ">>> NOT: Dosyalar gerçek incident verisi içerebilir; gerekirse paylaşmadan\n"
+        "    önce hassas alanları temizleyebilirsin (yapı/etiketler yeterli).\n"
+    )
+    return 0
+
+
+def _dump_html(page, conf: cfg.Config, debug_dir, prefix: str) -> None:
+    """Dış sayfa + (varsa) iframe içeriğini ayrı dosyalara yazar."""
+    outer = page.content()
+    (debug_dir / f"{prefix}_outer.html").write_text(outer, encoding="utf-8")
+
+    root = scraper._content_root(page, conf)
+    try:
+        inner = root.content()
+    except Exception:  # noqa: BLE001
+        inner = outer
+    (debug_dir / f"{prefix}_inner.html").write_text(inner, encoding="utf-8")
+    logger.info("Yazıldı: %s_outer.html ve %s_inner.html", prefix, prefix)
+
+
 # --------------------------------------------------------------------------
 # Giriş noktası
 # --------------------------------------------------------------------------
@@ -189,6 +271,7 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="Hiçbir şey göndermeden ne yapılacağını loglar (önerilir: ilk koşu)",
     )
+    sub.add_parser("dump", help="Seçici çıkarımı için liste/kayıt HTML'ini debug/ altına döker")
 
     args = parser.parse_args(argv)
 
@@ -205,6 +288,8 @@ def main(argv: list[str] | None = None) -> int:
             return cmd_report(conf)
         if args.command == "remind":
             return cmd_remind(conf, dry_run=args.dry_run)
+        if args.command == "dump":
+            return cmd_dump(conf)
     except KeyboardInterrupt:
         logger.warning("Kullanıcı tarafından durduruldu.")
         return 130
