@@ -81,23 +81,36 @@ reminder:
   # bu metin aranarak çift gönderim engellenir. Müşteriye görünür; kısa tutun.
   signature_marker: "[Auto-Reminder]"
 
-  # 1. hatırlatma metni (kullanıcı tarafından doldurulacak).
+  # 1. hatırlatma metni (Gün 2 — çözümün doğrulanması için takip).
   reminder_1_text: |
-    Dear customer,
+    Dear Customer,
 
-    This is a friendly reminder regarding your incident. Could you please
-    confirm whether the issue has been resolved? We are awaiting your feedback.
+    We recently informed you that your incident has been resolved.
+
+    We would kindly like to confirm whether the provided solution has fully
+    resolved your issue. Could you please review it and let us know if we may
+    consider this incident as resolved?
+
+    If the issue still persists, simply reply to this notification and we will
+    continue assisting you.
+
+    Thank you for your cooperation.
 
     Best regards,
     IT Support
 
-  # 2. hatırlatma metni — ZORUNLU kapanış uyarısı cümlesini içermelidir.
+  # 2. hatırlatma metni (Gün 4 — ZORUNLU kapanış uyarısı cümlesini içerir).
   reminder_2_text: |
-    Dear customer,
+    Dear Customer,
 
-    This is a second reminder regarding your incident. Please be informed that
-    the INC will be closed if we do not receive feedback from your side within
-    two working days.
+    This is a second reminder regarding your recently resolved incident. We have
+    not yet received your feedback confirming whether the issue has been resolved.
+
+    Please be informed that the INC will be closed if we do not receive feedback
+    from your side within two working days.
+
+    If the issue still persists, kindly reply to this notification so that we can
+    continue supporting you.
 
     Best regards,
     IT Support
