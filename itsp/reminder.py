@@ -129,6 +129,61 @@ def decide_stage(
     return 0, f"Atlandı (1. hatırlatmadan {wd} iş günü; {second_after} bekleniyor)"
 
 
+def recommend_action(
+    inc: Incident,
+    state: ReminderState,
+    conf: cfg.Config,
+    now: Optional[datetime] = None,
+) -> str:
+    """Salt-okunur aksiyon listesi için: incident'ın önerilen sonraki adımı.
+
+    Gönderim kararını, sürecin manuel adımlarıyla (gün 6 kapatma, 'müşteri yanıt
+    verdi') birleştirip insan-okur bir öneri döndürür. Hiçbir yazma yapmaz;
+    state yalnızca okunur.
+    """
+    now = now or datetime.now()
+    holidays = parse_holidays(conf.get("workdays.holidays"))
+
+    if not status_in_scope(inc, conf):
+        return "Kapsam dışı (statü hedef listede değil)"
+
+    side = classify_side(inc, conf)
+    inc.side = side
+    if side == "Customer":
+        return "Müşteri yanıt verdi — incele ve işlem yap"
+    if side != "Us":
+        return "Son yorum sahibi belirsiz — kontrol et"
+
+    if inc.last_comment_date is None:
+        return "Son yorum tarihi okunamadı — kontrol et"
+
+    first = int(conf.get("reminder.first_after_workdays", 2))
+    second = int(conf.get("reminder.second_after_workdays", 2))
+    closure = int(conf.get("reminder.closure_after_workdays", 2))
+    prev = state.get_stage(inc.number)
+
+    if prev == 0:
+        wd = working_days_between(inc.last_comment_date, now, holidays)
+        inc.working_days_since = wd
+        if wd >= first:
+            return f"1. hatırlatma gönder (son yorumdan {wd} iş günü geçti)"
+        return f"Bekle — 1. hatırlatma için {first} iş günü ({wd}/{first})"
+
+    last_sent = state.last_reminder_sent_at(inc.number)
+    wd = working_days_between(last_sent, now, holidays) if last_sent else None
+    inc.working_days_since = wd
+
+    if prev == 1:
+        if wd is not None and wd >= second:
+            return "2. hatırlatma gönder (kapanış uyarılı)"
+        return f"Bekle — 2. hatırlatma için {second} iş günü ({wd}/{second})"
+
+    # prev >= 2 : ikinci hatırlatma gönderilmiş
+    if wd is not None and wd >= closure:
+        return f"KAPATILABİLİR (gün 6) — müşteri yanıtı yok, manuel kapat ({wd} iş günü)"
+    return f"2. hatırlatma gönderildi — kapanış için bekle ({wd}/{closure} iş günü)"
+
+
 def reminder_text(stage: int, conf: cfg.Config, inc: Optional[Incident] = None) -> str:
     """İlgili kademe metni + idempotensi imzası.
 

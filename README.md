@@ -51,6 +51,11 @@ python run.py login
 # 2) Salt-okunur rapor → incident_report.xlsx
 python run.py report
 
+# 2b) Salt-okunur AKSİYON LİSTESİ → action_list.xlsx (+ konsol özeti)
+#     Her incident için önerilen sonraki adım (1./2. hatırlatma, kapatma, incele).
+#     "Bana atanmış" için config.yaml'daki incident_list_url'i assigned_to filtresiyle kullanın.
+python run.py actions
+
 # 3) Hatırlatıcı akışı — önce DRY-RUN ile doğrulayın (hiçbir şey göndermez)
 python run.py remind --dry-run
 

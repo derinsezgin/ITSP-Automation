@@ -11,8 +11,11 @@
 base_url: "https://your-instance.service-now.com"
 # Login sonrası açılacak dashboard (boşsa base_url kullanılır).
 dashboard_url: "https://your-instance.service-now.com/now/nav/ui/home"
-# Incident liste sayfası. Classic örnek: incident_list.do?sysparm_query=active=true
-incident_list_url: "https://your-instance.service-now.com/incident_list.do?sysparm_query=active=true"
+# Incident liste sayfası.
+#   Tüm aktif: incident_list.do?sysparm_query=active=true
+#   BANA ATANMIŞ aktif kayıtlar (actions/report/remind için önerilen):
+#     incident_list.do?sysparm_query=active=true^assigned_to=javascript:gs.getUserID()
+incident_list_url: "https://your-instance.service-now.com/incident_list.do?sysparm_query=active=true^assigned_to=javascript:gs.getUserID()"
 
 # Saat dilimi (iş günü hesabı için).
 timezone: "Europe/Istanbul"
@@ -75,6 +78,7 @@ reminder:
     - "Resolved"
   first_after_workdays: 2          # 1. hatırlatma: son yorumdan kaç iş günü sonra
   second_after_workdays: 2         # 2. hatırlatma: 1. hatırlatmadan kaç iş günü sonra
+  closure_after_workdays: 2        # kapatma önerisi: 2. hatırlatmadan kaç iş günü sonra (gün 6)
   require_initial_response: false  # true ise 3 iş günü içinde ilk yanıt yoksa manuel inceleme
   max_per_run: 25                  # tek koşuda azami gönderim (güvenlik)
   # İdempotensi imzası: gönderilen her hatırlatma metnine eklenir ve Activity'de

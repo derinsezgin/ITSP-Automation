@@ -90,6 +90,42 @@ def cmd_report(conf: cfg.Config) -> int:
     return 0
 
 
+def cmd_actions(conf: cfg.Config) -> int:
+    """Salt-okunur AKSIYON LİSTESİ: (bana atanmış) incident'ları gezip her biri
+    için önerilen sonraki adımı çıkarır. Hiçbir şey göndermez.
+    """
+    state = ReminderState.load()  # yalnızca okunur; kaydedilmez
+    with browser.persistent_context(conf) as context:
+        page = context.pages[0] if context.pages else context.new_page()
+        auth.open_dashboard(page, conf)
+        try:
+            auth.ensure_authenticated(page, conf)
+        except auth.ManualLoginRequired as exc:
+            logger.error(str(exc))
+            _save_screenshot(page, "auth_required")
+            print("\n>>> MANUEL LOGIN GEREKİYOR. `python run.py login` çalıştırın.\n")
+            return 2
+
+        # Salt-okunur koruma (tüm yazma kapalı).
+        browser.enable_readonly_guard(context, conf, allow_comment_post=False)
+
+        try:
+            incidents = scraper.scrape_incidents(page, conf)
+            for inc in incidents:
+                inc.action = reminder.recommend_action(inc, state, conf)
+            out = write_report(incidents, path=cfg.ROOT / "action_list.xlsx")
+        except Exception:
+            _save_screenshot(page, "error")
+            raise
+
+    # Konsola okunabilir özet
+    print(f"\n>>> AKSİYON LİSTESİ ({len(incidents)} incident) — kaydedildi: {out}\n")
+    for inc in incidents:
+        print(f"  • {inc.number:<14} [{inc.status or '-'}] → {inc.action}")
+    print()
+    return 0
+
+
 def cmd_remind(conf: cfg.Config, dry_run: bool) -> int:
     """Hatırlatıcı akışı (tam otomatik). --dry-run ile sadece simülasyon."""
     state = ReminderState.load()
@@ -265,6 +301,7 @@ def main(argv: list[str] | None = None) -> int:
 
     sub.add_parser("login", help="Manuel SSO/MFA login (kalıcı profil)")
     sub.add_parser("report", help="Salt-okunur rapor (incident_report.xlsx)")
+    sub.add_parser("actions", help="Salt-okunur aksiyon listesi (action_list.xlsx)")
     p_remind = sub.add_parser("remind", help="Hatırlatıcı akışı (tam otomatik)")
     p_remind.add_argument(
         "--dry-run",
@@ -286,6 +323,8 @@ def main(argv: list[str] | None = None) -> int:
             return cmd_login(conf)
         if args.command == "report":
             return cmd_report(conf)
+        if args.command == "actions":
+            return cmd_actions(conf)
         if args.command == "remind":
             return cmd_remind(conf, dry_run=args.dry_run)
         if args.command == "dump":
